@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>병맛 손 점술사</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0015;
+    color: #e0c9ff;
+    font-family: 'Georgia', serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+  }
+  .stars {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 0;
+  }
+  .star {
+    position: absolute; border-radius: 50%;
+    background: white; animation: twinkle 3s infinite;
+  }
+  @keyframes twinkle {
+    0%,100% { opacity: 0.2; } 50% { opacity: 1; }
+  }
+  .container {
+    position: relative; z-index: 1;
+    width: 100%; max-width: 700px;
+    padding: 20px; text-align: center;
+  }
+  h1 {
+    font-size: 2.2em;
+    color: #d4a0ff;
+    text-shadow: 0 0 20px #a050ff;
+    margin: 20px 0 5px;
+    letter-spacing: 2px;
+  }
+  .subtitle {
+    color: #9070bb; font-size: 0.9em; margin-bottom: 20px;
+  }
+  #videoWrap {
+    position: relative; display: inline-block;
+    border: 2px solid #6030aa;
+    border-radius: 16px; overflow: hidden;
+    box-shadow: 0 0 30px #6020cc88;
+  }
+  #video {
+    width: 480px; max-width: 100%;
+    display: block; transform: scaleX(-1);
+  }
+  #canvas {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    transform: scaleX(-1);
+  }
+  .btn {
+    margin-top: 18px;
+    padding: 14px 40px;
+    font-size: 1.1em;
+    background: linear-gradient(135deg, #5010aa, #9030dd);
+    color: white; border: none; border-radius: 50px;
+    cursor: pointer; letter-spacing: 1px;
+    box-shadow: 0 0 20px #7020cc88;
+    transition: all 0.2s;
+  }
+  .btn:hover { transform: scale(1.05); box-shadow: 0 0 30px #9040ffaa; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  #status {
+    margin-top: 12px; font-size: 0.95em;
+    color: #b090dd; min-height: 24px;
+  }
+  #resultBox {
+    margin-top: 24px;
+    background: linear-gradient(135deg, #1a0035, #0d001f);
+    border: 1px solid #6030aa;
+    border-radius: 16px; padding: 24px;
+    box-shadow: 0 0 40px #5010aa44;
+    display: none; text-align: left;
+  }
+  #resultBox h2 {
+    color: #d4a0ff; font-size: 1.2em;
+    margin-bottom: 14px; text-align: center;
+    text-shadow: 0 0 10px #a050ff;
+  }
+  #fortuneText {
+    line-height: 1.9; font-size: 1em;
+    color: #e0d0ff; white-space: pre-wrap;
+  }
+  .loading-dots span {
+    animation: blink 1.2s infinite;
+    font-size: 1.5em; color: #a060ff;
+  }
+  .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes blink { 0%,80%,100%{opacity:0} 40%{opacity:1} }
+  .hand-data {
+    margin-top: 16px; padding: 12px;
+    background: #0d0025; border-radius: 10px;
+    font-size: 0.8em; color: #8060aa;
+    border: 1px solid #3a1060;
+  }
+  .again-btn {
+    display: block; margin: 16px auto 0;
+    padding: 10px 30px; font-size: 0.95em;
+    background: transparent;
+    color: #b080ff; border: 1px solid #6030aa;
+    border-radius: 50px; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .again-btn:hover { background: #2a0050; }
+</style>
+</head>
+<body>
+<div class="stars" id="stars"></div>
+<div class="container">
+  <h1>🔮 손 점술사</h1>
+  <p class="subtitle">당신의 손이 모든 것을 알고 있습니다...</p>
+
+  <div id="videoWrap">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <div id="status">카메라를 시작하려면 아래 버튼을 누르세요</div>
+  <button class="btn" id="startBtn" onclick="startCamera()">🎥 카메라 켜기</button>
+  <button class="btn" id="readBtn" onclick="readFortune()" style="display:none">🔮 손금 읽기</button>
+
+  <div id="resultBox">
+    <h2>✨ 점술사의 신탁 ✨</h2>
+    <div id="fortuneText"></div>
+    <div class="hand-data" id="handData"></div>
+    <button class="again-btn" onclick="readAgain()">🔄 다시 보기</button>
+  </div>
+</div>
+
+<script>
+// Stars
+const starsEl = document.getElementById('stars');
+for (let i = 0; i < 80; i++) {
+  const s = document.createElement('div');
+  s.className = 'star';
+  const size = Math.random() * 2.5 + 0.5;
+  s.style.cssText = `width:${size}px;height:${size}px;top:${Math.random()*100}%;left:${Math.random()*100}%;animation-delay:${Math.random()*3}s;animation-duration:${2+Math.random()*3}s`;
+  starsEl.appendChild(s);
+}
+
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const statusEl = document.getElementById('status');
+const startBtn = document.getElementById('startBtn');
+const readBtn = document.getElementById('readBtn');
+const resultBox = document.getElementById('resultBox');
+const fortuneText = document.getElementById('fortuneText');
+const handDataEl = document.getElementById('handData');
+
+let handDetector = null;
+let lastLandmarks = null;
+let detecting = false;
+
+async function startCamera() {
+  startBtn.disabled = true;
+  statusEl.textContent = '카메라 연결 중...';
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 480, height: 360, facingMode: 'environment' } });
+    video.srcObject = stream;
+    await new Promise(r => video.onloadedmetadata = r);
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    statusEl.textContent = '손 인식 엔진 로딩 중... 🔮';
+    await loadHandDetector();
+    startBtn.style.display = 'none';
+    readBtn.style.display = 'inline-block';
+    statusEl.textContent = '손을 카메라에 펼쳐주세요 ✋';
+    detecting = true;
+    detectLoop();
+  } catch(e) {
+    statusEl.textContent = '카메라 오류: ' + e.message;
+    startBtn.disabled = false;
+  }
+}
+
+async function loadHandDetector() {
+  try {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js';
+    document.head.appendChild(script);
+    await new Promise(r => script.onload = r);
+
+    handDetector = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
+    handDetector.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.7, minTrackingConfidence: 0.5 });
+    handDetector.onResults(onResults);
+    statusEl.textContent = '준비 완료! ✨';
+  } catch(e) {
+    handDetector = null;
+  }
+}
+
+let latestResults = null;
+function onResults(results) {
+  latestResults = results;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+    lastLandmarks = results.multiHandLandmarks[0];
+    drawHand(lastLandmarks);
+    statusEl.textContent = '손 감지됨! 준비되면 [손금 읽기] 버튼을 누르세요 🌟';
+  } else {
+    lastLandmarks = null;
+    statusEl.textContent = '손을 카메라에 펼쳐주세요 ✋';
+  }
+}
+
+async function detectLoop() {
+  if (!detecting) return;
+  if (handDetector && video.readyState >= 2) {
+    await handDetector.send({ image: video });
+  }
+  requestAnimationFrame(detectLoop);
+}
+
+function drawHand(lm) {
+  const w = canvas.width, h = canvas.height;
+  const connections = [
+    [0,1],[1,2],[2,3],[3,4],
+    [0,5],[5,6],[6,7],[7,8],
+    [0,9],[9,10],[10,11],[11,12],
+    [0,13],[13,14],[14,15],[15,16],
+    [0,17],[17,18],[18,19],[19,20],
+    [5,9],[9,13],[13,17]
+  ];
+  ctx.strokeStyle = '#a060ff'; ctx.lineWidth = 2;
+  connections.forEach(([a,b]) => {
+    ctx.beginPath();
+    ctx.moveTo(lm[a].x*w, lm[a].y*h);
+    ctx.lineTo(lm[b].x*w, lm[b].y*h);
+    ctx.stroke();
+  });
+  lm.forEach((p, i) => {
+    ctx.beginPath();
+    ctx.arc(p.x*w, p.y*h, i===0?6:4, 0, Math.PI*2);
+    ctx.fillStyle = i===0 ? '#ff80ff' : '#d090ff';
+    ctx.fill();
+  });
+}
+
+function analyzeHand(lm) {
+  const fingers = ['엄지','검지','중지','약지','새끼'];
+  const tips = [4, 8, 12, 16, 20];
+  const pips = [3, 6, 10, 14, 18];
+  const mcp = [2, 5, 9, 13, 17];
+  const extended = tips.map((tip, i) => {
+    if (i === 0) return Math.abs(lm[tip].x - lm[mcp[i]].x) > 0.06;
+    return lm[tip].y < lm[pips[i]].y;
+  });
+  const extCount = extended.filter(Boolean).length;
+  const xs = lm.map(p=>p.x), ys = lm.map(p=>p.y);
+  const handW = (Math.max(...xs) - Math.min(...xs)).toFixed(3);
+  const handH = (Math.max(...ys) - Math.min(...ys)).toFixed(3);
+  const zVals = lm.map(p=>p.z||0);
+  const zMean = zVals.reduce((a,b)=>a+b,0)/zVals.length;
+  const zStd = Math.sqrt(zVals.reduce((a,b)=>a+(b-zMean)**2,0)/zVals.length).toFixed(4);
+  const midBend = Math.abs(lm[12].y - lm[10].y).toFixed(3);
+  const extNames = fingers.filter((_, i) => extended[i]);
+  return {
+    extCount,
+    extNames: extNames.length ? extNames.join(', ') : '없음',
+    handW, handH, zStd, midBend,
+    summary: `펼친 손가락: ${extCount}개 (${extNames.length ? extNames.join(', ') : '모두 접음'}), 손 크기: ${handW}×${handH}, 떨림지수: ${zStd}`
+  };
+}
+
+const FORTUNES = {
+  0: [
+    "이 손은... 아무것도 잡지 않으려는 강한 의지를 품고 있습니다. 특히 설거지를.\n\n🍗 치킨운: 오늘 치킨은 당신 것이 아닙니다. 누군가 먼저 시켰습니다.\n😴 잠운: 눕는 순간 3초 안에 잠듭니다. 이것은 축복입니다.\n👥 인간관계운: 연락 안 한 친구가 오늘 갑자기 연락 옵니다. 돈 빌리러.\n\n🔮 신탁: 펼치지 않은 손가락은 펼치지 않은 가능성이다. 근데 굳이?",
+    "다섯 손가락 모두 내면으로 향하는 손입니다. 집순이/집돌이의 기운이 충만합니다.\n\n🍗 치킨운: 배달비가 아깝지 않은 날입니다. 시키세요.\n😴 잠운: 오늘 낮잠 2시간은 확정입니다. 거스를 수 없습니다.\n👥 인간관계운: 혼자가 편합니다. 이것은 나쁜 게 아닙니다.\n\n🔮 신탁: 모든 손가락을 접은 자만이 진정한 주먹을 쥘 수 있다."
+  ],
+  1: [
+    "검지 하나만 세운 이 손은... 무언가를 지적하고 싶은 욕망이 넘칩니다. SNS 댓글 참으세요.\n\n🍗 치킨운: 한 마리로는 부족합니다. 오늘만큼은 두 마리입니다.\n😴 잠운: 잠들기 직전 갑자기 중요한 걸 떠올립니다. 메모하세요.\n👥 인간관계운: 당신의 말 한마디가 누군가의 하루를 바꿉니다. 좋은 방향으로요 (아마도).\n\n🔮 신탁: 하나를 가리키는 손가락 뒤에는 세 개가 자신을 가리키고 있다.",
+    "엄지 하나만 세운 손. 유튜브 좋아요를 너무 많이 눌러 엄지에 기운이 쏠렸습니다.\n\n🍗 치킨운: 리뷰 별점 5개짜리 치킨집이 근처에 있습니다. 가세요.\n😴 잠운: 오늘 밤 꿈에 이상한 사람이 나옵니다. 당신이 아는 사람입니다.\n👥 인간관계운: 엄지척 받을 일이 생깁니다. 어색하게 웃게 됩니다.\n\n🔮 신탁: 좋아요는 눌렀지만 구독은 아직입니다. 인생도 그러합니다."
+  ],
+  2: [
+    "브이(✌️)의 기운이 느껴집니다. 사진 찍힐 때 자동으로 손이 올라가는 타입입니다.\n\n🍗 치킨운: 반반치킨입니다. 오늘은 선택하지 않아도 됩니다.\n😴 잠운: 두 번 알람을 맞춰놓고 세 번째에 일어납니다.\n👥 인간관계운: 두 명이 동시에 연락 옵니다. 누구 먼저 답할지 고민하다 둘 다 늦습니다.\n\n🔮 신탁: 평화는 두 손가락 사이의 간격만큼 가깝고도 멉니다.",
+    "검지와 중지... 이것은 운명의 크로스입니다. 오늘 운이 교차하는 날입니다.\n\n🍗 치킨운: 치킨 쿠폰이 오늘 만료됩니다. 확인하세요. 지금 당장.\n😴 잠운: 잠을 자려 할수록 더 깨어납니다. 폰 내려놓으세요.\n👥 인간관계운: 오해가 생기지만 해명하면 더 꼬입니다. 그냥 웃으세요.\n\n🔮 신탁: 교차한 손가락은 거짓말의 면죄부가 아닌 가능성의 교차로다."
+  ],
+  3: [
+    "세 손가락. 이것은 3대 소원의 손입니다. 소원이 있으시면 말씀해보세요. 들어줄 수 없지만 듣겠습니다.\n\n🍗 치킨운: 세 가지 소스 중 하나를 선택해야 합니다. 당신은 결국 뿌링클입니다.\n😴 잠운: 오늘 밤 3시간 더 자도 됩니다. 우주가 허락했습니다.\n👥 인간관계운: 세 명의 지인 중 한 명이 당신을 생각하고 있습니다. 누군지는 모릅니다.\n\n🔮 신탁: 세 번 넘어지고 네 번 일어나는 것. 하지만 솔직히 세 번이면 충분하다.",
+    "세 손가락의 기운... 삼세판의 DNA가 흐르고 있습니다. 포기하지 마세요, 한 번 더.\n\n🍗 치킨운: 세 번째 치킨집이 제일 맛있습니다. 두 번 실패해도 괜찮습니다.\n😴 잠운: 세 번 뒤척이다 잠듭니다. 네 번째는 없습니다.\n👥 인간관계운: 세 번 연락한 사람을 놓치지 마세요. 그게 진짜입니다.\n\n🔮 신탁: 삼세판의 세 번째는 항상 운명이다. 두 번째까지는 연습이었다."
+  ],
+  4: [
+    "네 손가락... 엄지만 숨긴 손. 당신은 핵심을 숨기는 타입입니다. 엄지가 비밀을 알고 있습니다.\n\n🍗 치킨운: 치킨 먹고 싶지만 참고 있습니다. 참지 마세요. 인생은 짧습니다.\n😴 잠운: 눈은 감겼지만 뇌는 활성화되어 있습니다. 내일 걱정은 내일 하세요.\n👥 인간관계운: 네 명이 있는 단톡방에서 혼자 읽씹당합니다. 괜찮습니다. 다들 바쁩니다.\n\n🔮 신탁: 숨긴 엄지는 언젠가 올라간다. 그때를 위해 오늘을 버텨라.",
+    "네 손가락을 편 손에서 강렬한 '거의 다 왔다'의 기운이 느껴집니다.\n\n🍗 치킨운: 네 조각 남은 치킨, 당신 차지입니다. 아무도 안 먹었습니다.\n😴 잠운: 4시간만 자도 될 것 같은 기분이 듭니다. 착각입니다. 7시간 주무세요.\n👥 인간관계운: 네 번째 만남에서 친해집니다. 아직 세 번밖에 안 만났다면 한 번만 더.\n\n🔮 신탁: 마지막 손가락 하나를 접은 이유는, 아직 끝이 아니기 때문이다."
+  ],
+  5: [
+    "다섯 손가락 모두 펼친 완전한 손! 이것은 전설의 손입니다. 오늘 당신은 무적입니다. 아마도.\n\n🍗 치킨운: 치킨 한 마리를 혼자 다 먹을 수 있는 날입니다. 도전하세요.\n😴 잠운: 오늘 밤 꿈이 드라마보다 재밌습니다. 기대하세요.\n👥 인간관계운: 모든 사람이 당신을 좋아합니다. 단 한 명 빼고. 그 사람도 사실은 좋아합니다.\n\n🔮 신탁: 다섯 손가락을 모두 편 자는 세상을 향해 '안녕'이라 말하는 것이다. 세상도 답한다. 조용히.",
+    "완전히 펼쳐진 손... 숨길 것이 없는 영혼의 소유자입니다. 투명합니다. 가끔은 너무.\n\n🍗 치킨운: 오늘 치킨은 운명입니다. 거부하면 우주의 섭리를 거스르는 것입니다.\n😴 잠운: 침대에 눕는 순간 중력이 두 배가 됩니다. 일어날 수 없습니다.\n👥 인간관계운: 당신의 솔직함이 오늘 빛을 발합니다. 가끔은 그냥 '좋아요'라고 하세요.\n\n🔮 신탁: 모든 것을 보여준 손은, 모든 것을 받아들일 준비가 된 손이다."
+  ]
+};
+
+function generateFortune(extCount) {
+  const pool = FORTUNES[extCount] || FORTUNES[3];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+async function readFortune() {
+  resultBox.style.display = 'block';
+  fortuneText.innerHTML = '<div class="loading-dots"><span>●</span><span>●</span><span>●</span></div><br>점술사가 당신의 손을 읽고 있습니다...';
+  handDataEl.textContent = '';
+  resultBox.scrollIntoView({ behavior: 'smooth' });
+
+  let analysisText = '';
+  let extCount = 3;
+
+  if (lastLandmarks) {
+    const analysis = analyzeHand(lastLandmarks);
+    extCount = analysis.extCount;
+    analysisText = `📊 손 분석 데이터\n펼친 손가락: ${analysis.extCount}개 (${analysis.extNames})\n손 크기: ${analysis.handW} × ${analysis.handH} | 떨림지수: ${analysis.zStd}`;
+  }
+
+  await new Promise(r => setTimeout(r, 1800));
+  const fortune = generateFortune(extCount);
+  fortuneText.textContent = fortune;
+  if (analysisText) handDataEl.textContent = analysisText;
+}
+
+function readAgain() {
+  resultBox.style.display = 'none';
+  statusEl.textContent = '손을 카메라에 다시 펼쳐주세요 ✋';
+}
+</script>
+</body>
+</html>
